@@ -10,6 +10,8 @@ if not GetDepend(['RT_USING_SERIAL']):
 
 if GetDepend(['RT_USING_SERIAL_V2']):
     src += ['serial_v2.c']
+else if GetDepend(['RT_USING_SERIAL_X']):
+    src += ['serialX.c']
 else:
     src += ['serial.c']
 
