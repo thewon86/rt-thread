@@ -239,7 +239,6 @@ rt_inline int _serial_poll_rx(struct rt_serial_device *serial, rt_uint8_t *data,
 
     RT_ASSERT(serial != RT_NULL);
     size = length;
-
     while (length)
     {
         ch = serial->ops->getc(serial);
@@ -291,6 +290,11 @@ rt_inline int _serial_int_rx(struct rt_serial_device *serial, rt_uint8_t *data, 
     int size;
     struct rt_serial_rx_fifo* rx_fifo;
 
+serial->ops->putc(serial, 'r');
+serial->ops->putc(serial, 'r');
+serial->ops->putc(serial, 'r');
+serial->ops->putc(serial, 'r');
+serial->ops->putc(serial, 'r');
     RT_ASSERT(serial != RT_NULL);
     size = length;
 

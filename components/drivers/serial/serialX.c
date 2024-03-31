@@ -1402,9 +1402,10 @@ rt_err_t rt_hw_serial_register(struct rt_serial_device *serial,
 {
     rt_err_t ret;
     struct rt_device *device;
+    struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
     RT_ASSERT(serial != RT_NULL);
 
-    serial->config = RT_SERIAL_CONFIG_DEFAULT;
+    serial->config = config;
     serial->bufsz = RT_SERIAL_FIFO_BUFSZ;
 
     device = &(serial->parent);

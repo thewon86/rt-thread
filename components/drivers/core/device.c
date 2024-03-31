@@ -37,6 +37,7 @@
 #define device_close    (dev->ops ? dev->ops->close : RT_NULL)
 #define device_read     (dev->ops ? dev->ops->read : RT_NULL)
 #define device_write    (dev->ops ? dev->ops->write : RT_NULL)
+#define device_flush    (dev->ops ? dev->ops->flush : RT_NULL)
 #define device_control  (dev->ops ? dev->ops->control : RT_NULL)
 #else
 #define device_init     (dev->init)
@@ -44,6 +45,7 @@
 #define device_close    (dev->close)
 #define device_read     (dev->read)
 #define device_write    (dev->write)
+#define device_flush    (dev->flush)
 #define device_control  (dev->control)
 #endif /* RT_USING_DEVICE_OPS */
 
@@ -302,8 +304,11 @@ rt_err_t rt_device_close(rt_device_t dev)
     }
 
     /* set open flag */
-    if (result == RT_EOK || result == -RT_ENOSYS)
+    if (result == RT_EOK || result == -RT_ENOSYS) {
         dev->open_flag = RT_DEVICE_OFLAG_CLOSE;
+        dev->rx_indicate = RT_NULL;
+        dev->tx_complete = RT_NULL;
+    }
 
     return result;
 }
@@ -394,6 +399,37 @@ rt_ssize_t rt_device_write(rt_device_t dev,
     return 0;
 }
 RTM_EXPORT(rt_device_write);
+
+/**
+ * @brief This function will flush a device's buffers.
+ *
+ * @param dev is the pointer of device driver structure.
+ *
+ * @return the result, RT_EOK on successfully.
+ */
+rt_err_t rt_device_flush(rt_device_t dev)
+{
+    RT_ASSERT(dev != RT_NULL);
+    RT_ASSERT(rt_object_get_type(&dev->parent) == RT_Object_Class_Device);
+
+    if (dev->ref_count == 0)
+    {
+        rt_set_errno(-RT_ERROR);
+        return 0;
+    }
+
+    /* call device_write interface */
+    if (device_flush != RT_NULL)
+    {
+        return device_flush(dev);
+    }
+
+    /* set error code */
+    rt_set_errno(-RT_ENOSYS);
+
+    return 0;
+}
+RTM_EXPORT(rt_device_flush);
 
 /**
  * @brief This function will perform a variety of control functions on devices.

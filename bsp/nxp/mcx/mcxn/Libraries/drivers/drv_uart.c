@@ -123,6 +123,8 @@ static const struct mcx_uart uarts[] = /* Initializes the above structure */
 #endif
 };
 
+static int mcx_putc(struct rt_serial_device *serial, char ch);
+
 /**
  * Configuring the serial port Module.
  *
@@ -187,6 +189,11 @@ static rt_err_t mcx_control(struct rt_serial_device *serial, int cmd, void *arg)
         break;
     case RT_DEVICE_CTRL_SET_INT:
         /* enable rx irq */
+        mcx_putc(serial, 's');
+        mcx_putc(serial, 's');
+        mcx_putc(serial, 's');
+        mcx_putc(serial, 's');
+        mcx_putc(serial, 's');
         LPUART_EnableInterrupts(uart->uart_base, kLPUART_RxDataRegFullInterruptEnable);
         EnableIRQ(uart->irqn);
         break;
@@ -238,6 +245,7 @@ static void uart_isr(struct rt_serial_device *serial)
     struct mcx_uart *uart; /* Create a serial port hardware structure variable */
 
     RT_ASSERT(serial != RT_NULL);
+    mcx_putc(serial, 'I');
 
     uart = (struct mcx_uart *) serial->parent.user_data;
     RT_ASSERT(uart != RT_NULL);

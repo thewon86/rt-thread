@@ -10,7 +10,7 @@ if GetDepend('BSP_USING_PIN'):
 if  GetDepend('BSP_USING_UART'):
     if GetDepend(['RT_USING_SERIAL_V2']):
         src += ['drv_uart_v2.c']
-    else if GetDepend(['RT_USING_SERIAL_X']):
+    elif GetDepend(['RT_USING_SERIAL_X']):
         src += ['drv_uartX.c']
     else:
         src += ['drv_uart.c']

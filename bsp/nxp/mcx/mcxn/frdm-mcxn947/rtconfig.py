@@ -17,7 +17,7 @@ if os.getenv('RTT_ROOT'):
 # EXEC_PATH is the compiler execute path, for example, CodeSourcery, Keil MDK, IAR
 if  CROSS_TOOL == 'gcc':
     PLATFORM    = 'gcc'
-    EXEC_PATH   = r'C:\Users\XXYYZZ'
+    EXEC_PATH   = r'/mnt/qt6/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin'
 elif CROSS_TOOL == 'keil':
     PLATFORM    = 'armclang'
     EXEC_PATH   = r'C:/Keil_v5'
@@ -45,7 +45,7 @@ if PLATFORM == 'gcc':
     STRIP = PREFIX + 'strip'
 
     DEVICE = ' -mcpu=' + CPU + ' -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=hard -ffunction-sections -fdata-sections'
-    CFLAGS = DEVICE + ' -Wall -D__FPU_PRESENT'
+    CFLAGS = DEVICE + ' -Wall -D__FPU_PRESENT -D_POSIX_C_SOURCE=1'
     AFLAGS = ' -c' + DEVICE + ' -x assembler-with-cpp -D__START=entry -D__STARTUP_CLEAR_BSS'
     LFLAGS = DEVICE + ' -specs=nano.specs -specs=nosys.specs -Wl,--defsym=__heap_size__=0x10000,--gc-sections,-Map=rtthread.map,--print-memory-usage -Tboard/linker_scripts/MCXN947_cm33_core0_flash.ld'
 

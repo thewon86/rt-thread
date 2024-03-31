@@ -67,6 +67,8 @@ extern "C" {
 #ifdef RT_USING_SERIAL
 #ifdef RT_USING_SERIAL_V2
 #include "drivers/serial_v2.h"
+#elif defined(RT_USING_SERIAL_X)
+#include "drivers/serialX.h"
 #else
 #include "drivers/serial.h"
 #endif

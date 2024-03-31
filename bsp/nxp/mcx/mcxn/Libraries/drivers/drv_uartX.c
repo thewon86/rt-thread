@@ -5,20 +5,18 @@
 // *
 // * Change Logs:
 // * Date           Author       Notes
-// * 2019-07-15     yandld      The first version for MCXN
+// * 2024-03-29     THEWON       The first version for MCXN
 // */
 
 #include <rtthread.h>
-#include "drv_uart.h"
+#include <rtdevice.h>
+#include "drv_uartX.h"
 
 #include "fsl_lpuart.h"
 #include "fsl_common.h"
 
 #ifdef RT_USING_SERIAL
 
-
-
-#include <rtdevice.h>
 
 /* lpc uart driver */
 struct mcx_uart
@@ -33,6 +31,7 @@ struct mcx_uart
     char *device_name; /* serial device name */
 };
 
+static int mcx_putc(struct rt_serial_device *serial, char ch);
 static void uart_isr(struct rt_serial_device *serial);
 
 #if defined(BSP_USING_UART2)
@@ -221,17 +220,25 @@ static rt_err_t mcx_control(struct rt_serial_device *serial, int cmd, void *arg)
     switch (cmd)
     {
     case RT_DEVICE_CTRL_OPEN:
+    {
+        uint32_t imask = LPUART_GetEnabledInterrupts(uart->uart_base);
+        LPUART_DisableInterrupts(uart->uart_base, imask);
+
+        EnableIRQ(uart->irqn);
+    }
     break;
     case RT_DEVICE_CTRL_CLOSE:
+    {
         uint32_t imask = LPUART_GetEnabledInterrupts(uart->uart_base);
-        LPUART_DisableInterrupts(imask);
+        LPUART_DisableInterrupts(uart->uart_base, imask);
+        DisableIRQ(uart->irqn);
         LPUART_Deinit(uart->uart_base);
+    }
     break;
     case RT_DEVICE_CTRL_CLR_INT:
         /* disable rx irq */
         if (ctrl_arg & RT_DEVICE_FLAG_INT_RX) {
             LPUART_DisableInterrupts(uart->uart_base, kLPUART_RxDataRegFullInterruptEnable);
-            DisableIRQ(uart->irqn);
         }
 
 #ifdef RT_SERIAL_USING_DMA
@@ -246,7 +253,6 @@ static rt_err_t mcx_control(struct rt_serial_device *serial, int cmd, void *arg)
         /* enable rx irq */
         if (ctrl_arg & RT_DEVICE_FLAG_INT_RX) {
             LPUART_EnableInterrupts(uart->uart_base, kLPUART_RxDataRegFullInterruptEnable);
-            EnableIRQ(uart->irqn);
         }
     break;
 #ifdef RT_SERIAL_USING_DMA
@@ -285,7 +291,7 @@ static int mcx_getc(struct rt_serial_device *serial)
 {
     struct mcx_uart *uart = (struct mcx_uart *)serial->parent.user_data;
 
-    if (kLPUART_RxDataRegFullInterruptEnable & LPUART_GetStatusFlags(uart->uart_base))
+    if (kLPUART_RxDataRegFullFlag & LPUART_GetStatusFlags(uart->uart_base))
 /* Check whether the receive cache is full and read the status flag bit of the status register
    This flag is read, indicating that there is data in the cache and can be read */
     {
@@ -299,17 +305,32 @@ static int mcx_getc(struct rt_serial_device *serial)
 
 static int mcx_flush(struct rt_serial_device *serial)
 {
-
+     return 0;
 }
 
 static void mcx_start_tx(struct rt_serial_device *serial)
 {
+    struct mcx_uart *uart; /* Create a serial port hardware structure variable */
+     
+    RT_ASSERT(serial != RT_NULL);
 
+    uart = (struct mcx_uart *) serial->parent.user_data;
+    RT_ASSERT(uart != RT_NULL);
+
+    LPUART_EnableInterrupts(uart->uart_base, kLPUART_TxDataRegEmptyInterruptEnable);
 }
 
 static void mcx_stop_tx(struct rt_serial_device *serial)
 {
+    struct mcx_uart *uart; /* Create a serial port hardware structure variable */
+     
+    RT_ASSERT(serial != RT_NULL);
 
+    uart = (struct mcx_uart *) serial->parent.user_data;
+    RT_ASSERT(uart != RT_NULL);
+
+    LPUART_DisableInterrupts(uart->uart_base, kLPUART_TxDataRegEmptyInterruptEnable);
+    LPUART_EnableInterrupts(uart->uart_base, kLPUART_RxDataRegFullInterruptEnable);
 }
 
 #ifdef RT_SERIAL_USING_DMA
@@ -340,11 +361,20 @@ static void uart_isr(struct rt_serial_device *serial)
     uart = (struct mcx_uart *) serial->parent.user_data;
     RT_ASSERT(uart != RT_NULL);
 
+    uint32_t status = LPUART_GetStatusFlags(uart->uart_base);
+    uint32_t enabledInterrupts = LPUART_GetEnabledInterrupts(uart->uart_base);
+
     /* enter interrupt */
     rt_interrupt_enter();
 
-    /* UART in mode Receiver -------------------------------------------------*/
-    rt_hw_serial_isr(serial, RT_SERIAL_EVENT_RX_IND);
+    if ((0 != ((uint32_t)kLPUART_RxDataRegFullInterruptEnable & enabledInterrupts)) &&
+        (0 != ((uint32_t)kLPUART_RxDataRegFullFlag & status))) {
+        rt_hw_serial_isr(serial, RT_SERIAL_EVENT_RX_IND);
+    }
+    if ((0 != ((uint32_t)kLPUART_TxDataRegEmptyInterruptEnable & enabledInterrupts)) &&
+        (0 != ((uint32_t)kLPUART_TxDataRegEmptyFlag & status))) {
+        rt_hw_serial_isr(serial, RT_SERIAL_EVENT_TX_DONE);
+    }
 
     /* leave interrupt */
     rt_interrupt_leave();
@@ -387,7 +417,11 @@ int rt_hw_uart_init(void)
  * @param Flag bit mask
  * @param A pointer to the current device that is used as user private data at registration
  */
-        rt_hw_serial_register(uarts[i].serial, uarts[i].device_name, RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX, (void *)&uarts[i]);
+        rt_hw_serial_register(uarts[i].serial, uarts[i].device_name, 
+                              RT_DEVICE_FLAG_RDWR | 
+                              RT_DEVICE_FLAG_INT_RX | 
+                              RT_DEVICE_FLAG_INT_TX,
+                              (void *)&uarts[i]);
     }
 
     return 0;
