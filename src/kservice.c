@@ -328,6 +328,7 @@ rt_device_t rt_console_set_device(const char *name)
     }
 
     return old_device;
+#endif
 }
 RTM_EXPORT(rt_console_set_device);
 #endif /* RT_USING_DEVICE */
